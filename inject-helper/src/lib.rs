@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::path::Path;
 use std::process::Command;
 
 #[derive(Debug)]
@@ -38,17 +39,21 @@ pub fn inject_graphics_hook(
 ) -> Result<(), InjectHelperError> {
     // Write the binaries to disk
     //
-    std::fs::write(
-        "inject-helper.exe",
-        include_bytes!("../bin/inject-helper64.exe"),
-    )
-    .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
+    if !Path::new("inject-helper.exe").exists() {
+        std::fs::write(
+            "inject-helper.exe",
+            include_bytes!("../bin/inject-helper64.exe"),
+        )
+        .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
+    }
 
-    std::fs::write(
-        "graphics-hook64.dll",
-        include_bytes!("../bin/graphics-hook64.dll"),
-    )
-    .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
+    if !Path::new("graphics-hook64.dll").exists() {
+        std::fs::write(
+            "graphics-hook64.dll",
+            include_bytes!("../bin/graphics-hook64.dll"),
+        )
+        .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
+    }
 
     // Run the injector
     //
