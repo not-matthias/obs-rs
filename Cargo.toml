@@ -1,5 +1,6 @@
 [workspace]
 members = [
 	"graphic-offsets",
+	"inject-helper",
     "obs-client",
 ]
