@@ -51,15 +51,22 @@ pub fn load_graphic_offsets() -> Result<GraphicOffsets, GraphicOffsetsError> {
 
     // Execute the binary
     //
-    let cmd = Command::new("./get-graphic-offsets.exe")
-        .spawn()
-        .map_err(|e| GraphicOffsetsError::ExecuteBinary(e))?;
-    let output = cmd
-        .wait_with_output()
+    let output = Command::new("./get-graphic-offsets.exe")
+        .output()
         .map_err(|e| GraphicOffsetsError::ExecuteBinary(e))?;
 
     // Parse the output
     //
     toml::from_str(&*String::from_utf8_lossy(&*output.stdout))
         .map_err(|e| GraphicOffsetsError::ParseOutput(e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load() {
+        assert!(load_graphic_offsets().is_ok());
+    }
 }
