@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::path::Path;
 use std::process::Command;
 
 pub enum GraphicOffsetsError {
@@ -43,11 +44,13 @@ pub struct DXGI {
 pub fn load_graphic_offsets() -> Result<GraphicOffsets, GraphicOffsetsError> {
     // Write the binary to the file
     //
-    std::fs::write(
-        "./get-graphic-offsets.exe",
-        include_bytes!("../bin/get-graphics-offsets64.exe"),
-    )
-    .map_err(|e| GraphicOffsetsError::WriteBinaryToFile(e))?;
+    if !Path::new("get-graphic-offsets.exe").exists() {
+        std::fs::write(
+            "get-graphic-offsets.exe",
+            include_bytes!("../bin/get-graphics-offsets64.exe"),
+        )
+        .map_err(|e| GraphicOffsetsError::WriteBinaryToFile(e))?;
+    }
 
     // Execute the binary
     //
