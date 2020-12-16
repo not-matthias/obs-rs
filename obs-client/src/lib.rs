@@ -44,6 +44,9 @@ pub struct Context {
     device: Option<ComPtr<ID3D11Device>>,
     device_context: Option<ComPtr<ID3D11DeviceContext>>,
     resource: Option<ComPtr<ID3D11Resource>>,
+
+    // Temporary storage so
+    frame_surface: Option<ComPtr<IDXGISurface1>>,
 }
 
 pub struct Capture {
@@ -156,6 +159,13 @@ impl Capture {
     }
 
     fn map_resource(&mut self) -> Result<(DXGI_MAPPED_RECT, (usize, usize)), ObsError> {
+        // Cleanup resources from the previous run
+        //
+        if let Some(frame_surface) = &self.context.frame_surface {
+            unsafe { frame_surface.Unmap() };
+            self.context.frame_surface = None;
+        }
+
         // Copy the resource (https://github.com/bryal/dxgcap-rs/blob/master/src/lib.rs#L187)
         //
         let frame_texture = self
@@ -206,7 +216,6 @@ impl Capture {
                 .CopyResource(readable_surface.as_raw(), frame_texture.up::<ID3D11Resource>().as_raw());
         }
         let frame_surface: ComPtr<IDXGISurface1> = readable_surface.cast().unwrap();
-
         log::info!("Texture Size: {} x {}", texture_desc.Width, texture_desc.Height);
 
         // Resource to Surface (https://github.com/bryal/dxgcap-rs/blob/master/src/lib.rs#L229)
@@ -220,8 +229,14 @@ impl Capture {
                 frame_surface.Release();
                 return Err(ObsError::MapSurface);
             }
+
             mapped_surface
         };
+
+        // Set the frame surface so that we can unmap it in the next run. We have to do
+        // it this way so that we can don't have to copy the pixels to a new buffer.
+        //
+        self.context.frame_surface = Some(frame_surface);
 
         Ok((
             mapped_surface,
