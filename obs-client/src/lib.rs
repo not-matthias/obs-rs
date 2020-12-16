@@ -69,6 +69,8 @@ impl Capture {
     }
 
     fn init_keepalive(&mut self) -> Option<()> {
+        log::info!("Initializing the keepalive mutex");
+
         let name = format!("{}{}", WINDOW_HOOK_KEEPALIVE, self.context.pid);
         if let Some(mutex) = Mutex::create(name) {
             self.context.keepalive_mutex = Some(mutex);
@@ -79,8 +81,10 @@ impl Capture {
     }
 
     fn attempt_existing_hook(&mut self) -> bool {
+        log::info!("Attempting to reuse the existing hook");
+
         if let Some(event) = Event::open(format!("{}{}", EVENT_CAPTURE_RESTART, self.context.pid)) {
-            log::info!("Found an existing hook.");
+            log::info!("Found an existing hook. Signalling the event");
 
             event.signal();
             true
@@ -90,6 +94,8 @@ impl Capture {
     }
 
     fn init_hook_info(&mut self) -> Result<(), ObsError> {
+        log::info!("Initializing the hook information");
+
         let mut file_mapping = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
             .ok_or(ObsError::CreateFileMapping)?;
 
@@ -127,6 +133,10 @@ impl Capture {
         create_pipe(format!("{}{}", PIPE_NAME, self.context.pid)).ok_or(ObsError::CreatePipe)?;
 
         if !self.attempt_existing_hook() {
+            log::info!(
+                "Trying to inject the graphics hook into the thread {}.",
+                self.context.thread_id
+            );
             inject_helper::inject_graphics_hook(self.context.thread_id, true).map_err(|e| ObsError::Inject(e))?;
         }
 

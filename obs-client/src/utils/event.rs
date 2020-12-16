@@ -10,6 +10,8 @@ pub struct Event {
 
 impl Event {
     pub fn open<S: AsRef<str>>(name: S) -> Option<Self> {
+        log::info!("Trying to create the {:?} event", name.as_ref());
+
         let event = unsafe { OpenEventA(EVENT_FLAGS, false as _, format!("{}\0", name.as_ref()).as_ptr() as _) };
 
         if event.is_null() {

@@ -12,6 +12,8 @@ pub struct FileMapping<T> {
 
 impl<T> FileMapping<T> {
     pub fn open<S: AsRef<str>>(name: S) -> Option<Self> {
+        log::info!("Trying to create a file mapping to {:?}.", name.as_ref());
+
         let handle = unsafe {
             OpenFileMappingA(
                 FILE_MAP_ALL_ACCESS,

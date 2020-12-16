@@ -6,6 +6,8 @@ pub struct Mutex {
 
 impl Mutex {
     pub fn create<S: AsRef<str>>(name: S) -> Option<Self> {
+        log::info!("Trying to create the {:?} mutex", name.as_ref());
+
         let handle = unsafe {
             CreateMutexA(
                 std::ptr::null_mut(),
