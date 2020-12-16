@@ -262,3 +262,11 @@ impl Capture {
         Ok((mapped_pixels, (width, height)))
     }
 }
+
+impl Drop for Capture {
+    fn drop(&mut self) {
+        if let Some(frame_surface) = &self.context.frame_surface {
+            unsafe { frame_surface.Unmap() };
+        }
+    }
+}
