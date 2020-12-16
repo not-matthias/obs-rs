@@ -1,6 +1,4 @@
-use std::convert::TryFrom;
-use std::path::Path;
-use std::process::Command;
+use std::{convert::TryFrom, path::Path, process::Command};
 
 #[derive(Debug)]
 pub enum InjectHelperError {
@@ -33,26 +31,17 @@ impl TryFrom<i32> for ExitStatus {
 }
 
 /// Tries to inject the graphics hook into the specified process.
-pub fn inject_graphics_hook(
-    pid: u32,
-    anti_cheat_compatible: bool,
-) -> Result<(), InjectHelperError> {
+pub fn inject_graphics_hook(pid: u32, anti_cheat_compatible: bool) -> Result<(), InjectHelperError> {
     // Write the binaries to disk
     //
     if !Path::new("inject-helper.exe").exists() {
-        std::fs::write(
-            "inject-helper.exe",
-            include_bytes!("../bin/inject-helper64.exe"),
-        )
-        .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
+        std::fs::write("inject-helper.exe", include_bytes!("../bin/inject-helper64.exe"))
+            .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
     }
 
     if !Path::new("graphics-hook64.dll").exists() {
-        std::fs::write(
-            "graphics-hook64.dll",
-            include_bytes!("../bin/graphics-hook64.dll"),
-        )
-        .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
+        std::fs::write("graphics-hook64.dll", include_bytes!("../bin/graphics-hook64.dll"))
+            .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
     }
 
     // Run the injector

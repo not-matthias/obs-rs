@@ -1,7 +1,7 @@
 use serde::Deserialize;
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
+#[derive(Debug)]
 pub enum GraphicOffsetsError {
     WriteBinaryToFile(std::io::Error),
     ExecuteBinary(std::io::Error),
@@ -60,8 +60,7 @@ pub fn load_graphic_offsets() -> Result<GraphicOffsets, GraphicOffsetsError> {
 
     // Parse the output
     //
-    toml::from_str(&*String::from_utf8_lossy(&*output.stdout))
-        .map_err(|e| GraphicOffsetsError::ParseOutput(e))
+    toml::from_str(&*String::from_utf8_lossy(&*output.stdout)).map_err(|e| GraphicOffsetsError::ParseOutput(e))
 }
 
 #[cfg(test)]
