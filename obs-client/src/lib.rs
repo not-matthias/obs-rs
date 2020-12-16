@@ -251,13 +251,13 @@ impl Capture {
     /// Returns a tuple with the:
     /// - Frame
     /// - Width and Height
-    pub fn capture_frame<T>(&mut self) -> Result<(&[T], (usize, usize)), ObsError> {
+    pub fn capture_frame<T>(&mut self) -> Result<(&mut [T], (usize, usize)), ObsError> {
         let (mapped_surface, (width, height)) = self.map_resource()?;
 
         let byte_size = |x| x * mem::size_of::<BGRA8>() / mem::size_of::<T>();
         let stride = mapped_surface.Pitch as usize / mem::size_of::<BGRA8>();
         let mapped_pixels =
-            unsafe { slice::from_raw_parts(mapped_surface.pBits as *const T, byte_size(stride) * height) };
+            unsafe { slice::from_raw_parts_mut(mapped_surface.pBits as *mut T, byte_size(stride) * height) };
 
         Ok((mapped_pixels, (width, height)))
     }
