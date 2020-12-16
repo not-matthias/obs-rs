@@ -251,7 +251,7 @@ impl Capture {
     /// Returns a tuple with the:
     /// - Frame
     /// - Width and Height
-    pub fn capture_frame<T: Clone>(&mut self) -> Result<(&[T], (usize, usize)), ObsError> {
+    pub fn capture_frame<T>(&mut self) -> Result<(&[T], (usize, usize)), ObsError> {
         let (mapped_surface, (width, height)) = self.map_resource()?;
 
         let byte_size = |x| x * mem::size_of::<BGRA8>() / mem::size_of::<T>();
