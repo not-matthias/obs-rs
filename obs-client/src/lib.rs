@@ -51,6 +51,9 @@ pub struct Capture {
     context: Context,
 }
 
+unsafe impl Send for Capture {}
+unsafe impl Sync for Capture {}
+
 impl Capture {
     pub fn new<S: ToString>(window_name: S) -> Self {
         Self {
