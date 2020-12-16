@@ -127,7 +127,7 @@ impl Capture {
         create_pipe(format!("{}{}", PIPE_NAME, self.context.pid)).ok_or(ObsError::CreatePipe)?;
 
         if !self.attempt_existing_hook() {
-            inject_helper::inject_graphics_hook(self.context.pid, true).map_err(|e| ObsError::Inject(e))?;
+            inject_helper::inject_graphics_hook(self.context.thread_id, true).map_err(|e| ObsError::Inject(e))?;
         }
 
         self.init_hook_info()?;
