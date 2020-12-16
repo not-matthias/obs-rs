@@ -130,8 +130,6 @@ impl Capture {
 
         self.init_keepalive().ok_or(ObsError::CreateMutex)?;
 
-        create_pipe(format!("{}{}", PIPE_NAME, self.context.pid)).ok_or(ObsError::CreatePipe)?;
-
         if !self.attempt_existing_hook() {
             log::info!(
                 "Trying to inject the graphics hook into the thread {}.",
@@ -141,6 +139,8 @@ impl Capture {
         }
 
         self.init_hook_info()?;
+
+        create_pipe(format!("{}{}", PIPE_NAME, self.context.pid)).ok_or(ObsError::CreatePipe)?;
 
         assert!(self.context.hook_info.is_some());
 
