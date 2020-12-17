@@ -4,7 +4,7 @@ use crate::{
         HookInfo, SharedTextureData, EVENT_CAPTURE_RESTART, PIPE_NAME, SHMEM_HOOK_INFO, SHMEM_TEXTURE,
         WINDOW_HOOK_KEEPALIVE,
     },
-    utils::{color::BGRA8, d3d11, event::Event, file_mapping::FileMapping, mutex::Mutex, pipe::create_pipe},
+    utils::{color::BGRA8, d3d11, event::Event, file_mapping::FileMapping, mutex::Mutex, pipe::NamedPipe},
 };
 use std::{mem, ops::DerefMut, ptr, slice};
 use winapi::{
@@ -40,6 +40,7 @@ pub struct Context {
 
     hook_info: Option<FileMapping<HookInfo>>,
     keepalive_mutex: Option<Mutex>,
+    pipe: Option<NamedPipe>,
 
     device: Option<ComPtr<ID3D11Device>>,
     device_context: Option<ComPtr<ID3D11DeviceContext>>,
@@ -55,6 +56,7 @@ pub struct Capture {
 }
 
 unsafe impl Send for Capture {}
+
 unsafe impl Sync for Capture {}
 
 impl Capture {
@@ -68,16 +70,24 @@ impl Capture {
         }
     }
 
-    fn init_keepalive(&mut self) -> Option<()> {
+    fn init_keepalive(&mut self) -> Result<(), ObsError> {
         log::info!("Initializing the keepalive mutex");
 
-        let name = format!("{}{}", WINDOW_HOOK_KEEPALIVE, self.context.pid);
-        if let Some(mutex) = Mutex::create(name) {
-            self.context.keepalive_mutex = Some(mutex);
-            Some(())
-        } else {
-            None
+        if self.context.keepalive_mutex.is_none() {
+            let name = format!("{}{}", WINDOW_HOOK_KEEPALIVE, self.context.pid);
+            self.context.keepalive_mutex = Some(Mutex::create(name).ok_or(ObsError::CreateMutex)?);
         }
+
+        Ok(())
+    }
+
+    fn init_pipe(&mut self) -> Result<(), ObsError> {
+        if self.context.pipe.is_none() {
+            let name = format!("{}{}", PIPE_NAME, self.context.pid);
+            self.context.pipe = Some(NamedPipe::create(name).ok_or(ObsError::CreatePipe)?);
+        }
+
+        Ok(())
     }
 
     fn attempt_existing_hook(&mut self) -> bool {
@@ -128,7 +138,8 @@ impl Capture {
         self.context.pid = pid;
         self.context.thread_id = thread_id;
 
-        self.init_keepalive().ok_or(ObsError::CreateMutex)?;
+        self.init_keepalive()?;
+        self.init_pipe()?;
 
         if !self.attempt_existing_hook() {
             log::info!(
@@ -139,8 +150,6 @@ impl Capture {
         }
 
         self.init_hook_info()?;
-
-        create_pipe(format!("{}{}", PIPE_NAME, self.context.pid)).ok_or(ObsError::CreatePipe)?;
 
         assert!(self.context.hook_info.is_some());
 
