@@ -8,36 +8,59 @@ pub enum GraphicOffsetsError {
     ParseOutput(toml::de::Error),
 }
 
+#[doc(hidden)]
 #[repr(C)]
 #[derive(Deserialize)]
-pub struct GraphicOffsets {
+pub struct ParsedGraphicOffsets {
     pub d3d8: D3D8,
     pub d3d9: D3D9,
     pub dxgi: DXGI,
 }
 
 #[repr(C)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Default, Debug)]
+pub struct GraphicOffsets {
+    pub d3d8: D3D8,
+    pub d3d9: D3D9,
+    pub dxgi: DXGI,
+    pub ddraw: DDraw,
+}
+
+#[repr(C)]
+#[derive(Deserialize, Default, Debug)]
 pub struct D3D8 {
-    pub present: u64,
+    pub present: u32,
 }
 
 #[repr(C)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Default, Debug)]
 pub struct D3D9 {
-    pub present: u64,
-    pub present_ex: u64,
-    pub present_swap: u64,
-    pub d3d9_clsoff: u64,
-    pub is_d3d9ex_clsoff: u64,
+    pub present: u32,
+    pub present_ex: u32,
+    pub present_swap: u32,
+    pub d3d9_clsoff: u32,
+    pub is_d3d9ex_clsoff: u32,
 }
 
 #[repr(C)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Default, Debug)]
 pub struct DXGI {
-    pub present: u64,
-    pub present1: u64,
-    pub resize: u64,
+    pub present: u32,
+    pub present1: u32,
+    pub resize: u32,
+}
+
+#[repr(C)]
+#[derive(Deserialize, Default, Debug)]
+pub struct DDraw {
+    pub surface_create: u32,
+    pub surface_restore: u32,
+    pub surface_release: u32,
+    pub surface_unlock: u32,
+    pub surface_blt: u32,
+    pub surface_flip: u32,
+    pub surface_set_palette: u32,
+    pub palette_set_entries: u32,
 }
 
 /// Loads the graphic offsets and returns them.
@@ -62,14 +85,33 @@ pub fn load_graphic_offsets() -> Result<GraphicOffsets, GraphicOffsetsError> {
         .output()
         .map_err(|e| GraphicOffsetsError::ExecuteBinary(e))?;
 
-    // Parse the output
+    // Parse the output. We need to do this with a separate structure, because the
+    // sizes need to match. Wrapping the `ddraw` with an Option, will add 4 more
+    // bytes that we don't need.
     //
-    toml::from_str(&*String::from_utf8_lossy(&*output.stdout)).map_err(|e| GraphicOffsetsError::ParseOutput(e))
+    let parsed = toml::from_str::<ParsedGraphicOffsets>(&*String::from_utf8_lossy(&*output.stdout))
+        .map_err(|e| GraphicOffsetsError::ParseOutput(e))?;
+
+    Ok(GraphicOffsets {
+        d3d8: parsed.d3d8,
+        d3d9: parsed.d3d9,
+        dxgi: parsed.dxgi,
+        ddraw: Default::default(),
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_sizes() {
+        assert_eq!(core::mem::size_of::<D3D8>(), 4);
+        assert_eq!(core::mem::size_of::<D3D9>(), 20);
+        assert_eq!(core::mem::size_of::<DXGI>(), 12);
+        assert_eq!(core::mem::size_of::<DDraw>(), 32);
+        assert_eq!(core::mem::size_of::<GraphicOffsets>(), 68);
+    }
 
     #[test]
     fn test_load() {
