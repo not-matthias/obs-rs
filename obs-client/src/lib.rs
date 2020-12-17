@@ -1,12 +1,12 @@
 use crate::{
     error::ObsError,
     hook_info::{
-        HookInfo, SharedTextureData, EVENT_CAPTURE_RESTART, PIPE_NAME, SHMEM_HOOK_INFO, SHMEM_TEXTURE,
+        HookInfo, SharedTextureData, EVENT_CAPTURE_RESTART, EVENT_HOOK_INIT, PIPE_NAME, SHMEM_HOOK_INFO, SHMEM_TEXTURE,
         WINDOW_HOOK_KEEPALIVE,
     },
     utils::{color::BGRA8, d3d11, event::Event, file_mapping::FileMapping, mutex::Mutex, pipe::NamedPipe},
 };
-use std::{mem, ops::DerefMut, ptr, slice};
+use std::{mem, ptr, slice};
 use winapi::{
     shared::{
         dxgi::{IDXGISurface1, DXGI_MAPPED_RECT, DXGI_MAP_READ, DXGI_RESOURCE_PRIORITY_MAXIMUM},
@@ -38,7 +38,6 @@ pub struct Context {
     thread_id: u32,
     texture_handle: u32,
 
-    hook_info: Option<FileMapping<HookInfo>>,
     keepalive_mutex: Option<Mutex>,
     pipe: Option<NamedPipe>,
 
@@ -46,7 +45,7 @@ pub struct Context {
     device_context: Option<ComPtr<ID3D11DeviceContext>>,
     resource: Option<ComPtr<ID3D11Resource>>,
 
-    // Temporary storage so
+    // Temporary storage so that we don't leak memory / have UB.
     frame_surface: Option<ComPtr<IDXGISurface1>>,
 }
 
@@ -56,7 +55,6 @@ pub struct Capture {
 }
 
 unsafe impl Send for Capture {}
-
 unsafe impl Sync for Capture {}
 
 impl Capture {
@@ -93,12 +91,18 @@ impl Capture {
     fn attempt_existing_hook(&mut self) -> bool {
         log::info!("Attempting to reuse the existing hook");
 
+        // Create the event if not yet done
+        //
         if let Some(event) = Event::open(format!("{}{}", EVENT_CAPTURE_RESTART, self.context.pid)) {
             log::info!("Found an existing hook. Signalling the event");
 
-            event.signal();
+            if event.signal().is_none() {
+                log::warn!("Failed to signal the event");
+            };
+
             true
         } else {
+            log::info!("Found no existing hook.");
             false
         }
     }
@@ -106,18 +110,8 @@ impl Capture {
     fn init_hook_info(&mut self) -> Result<(), ObsError> {
         log::info!("Initializing the hook information");
 
-        if self.context.hook_info.is_none() {
-            let file_mapping = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
-                .ok_or(ObsError::CreateFileMapping)?;
-            self.context.hook_info = Some(file_mapping);
-        }
-
-        // Hook info can never be `None`. We initialize it before that and return if it
-        // failed.
-        //
-        assert!(self.context.hook_info.is_some());
-
-        let hook_info = self.context.hook_info.as_mut().unwrap().deref_mut();
+        let mut hook_info = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
+            .ok_or(ObsError::CreateFileMapping)?;
 
         let graphic_offsets = graphic_offsets::load_graphic_offsets().map_err(|e| ObsError::LoadGraphicOffsets(e))?;
         unsafe { (**hook_info).graphics_offsets = graphic_offsets };
@@ -157,15 +151,23 @@ impl Capture {
 
         self.init_hook_info()?;
 
-        assert!(self.context.hook_info.is_some());
+        // Create and signal the hook init event
+        //
+        let event = Event::open(format!("{}{}", EVENT_HOOK_INIT, self.context.pid)).ok_or(ObsError::CreateEvent)?;
+        if event.signal().is_none() {
+            log::warn!("Failed to signal the hook init event");
+        };
 
         // Extract the handle
         //
+        let hook_info = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
+            .ok_or(ObsError::CreateFileMapping)?;
+
         let texture_data = FileMapping::<SharedTextureData>::open(format!(
             "{}_{}_{}",
             SHMEM_TEXTURE,
-            unsafe { (***self.context.hook_info.as_ref().unwrap()).window },
-            unsafe { (***self.context.hook_info.as_ref().unwrap()).map_id }
+            unsafe { (**hook_info).window },
+            unsafe { (**hook_info).map_id }
         ))
         .ok_or(ObsError::CreateFileMapping)?;
 

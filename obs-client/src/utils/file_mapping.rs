@@ -12,8 +12,6 @@ pub struct FileMapping<T> {
 
 impl<T> FileMapping<T> {
     pub fn open<S: AsRef<str>>(name: S) -> Option<Self> {
-        log::info!("Trying to create a file mapping to {:?}.", name.as_ref());
-
         let handle = unsafe {
             OpenFileMappingA(
                 FILE_MAP_ALL_ACCESS,
@@ -32,6 +30,13 @@ impl<T> FileMapping<T> {
             log::warn!("Failed to map view of file ({:?}).", name.as_ref());
             return None;
         }
+
+        log::trace!(
+            "Created the file mapping for {:?} = {:x}, {:x}",
+            name.as_ref(),
+            handle as usize,
+            file_mapping as usize
+        );
 
         Some(Self {
             handle: handle as usize,
@@ -52,6 +57,7 @@ impl<T> DerefMut for FileMapping<T> {
 
 impl<T> Drop for FileMapping<T> {
     fn drop(&mut self) {
+        log::trace!("Dropping the file mapping");
         unsafe { UnmapViewOfFile(self.file_mapping as _) };
         unsafe { CloseHandle(self.handle as _) };
     }

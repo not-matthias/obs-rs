@@ -13,12 +13,10 @@ pub struct NamedPipe {
 
 impl NamedPipe {
     pub fn create<S: AsRef<str>>(name: S) -> Option<Self> {
-        log::info!("Trying to create the {:?} named pipe", name.as_ref());
-
-        let name = format!("\\\\.\\pipe\\{}\0", name.as_ref());
+        let pipe_name = format!("\\\\.\\pipe\\{}\0", name.as_ref());
         let handle = unsafe {
             CreateNamedPipeA(
-                name.as_ptr() as _,
+                pipe_name.as_ptr() as _,
                 PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                 PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
                 1,
@@ -30,6 +28,8 @@ impl NamedPipe {
         };
 
         if handle != INVALID_HANDLE_VALUE {
+            log::trace!("Created the named pipe {:?} = 0x{:x}", name.as_ref(), handle as usize);
+
             Some(Self {
                 handle: handle as usize,
             })
@@ -40,5 +40,8 @@ impl NamedPipe {
 }
 
 impl Drop for NamedPipe {
-    fn drop(&mut self) { unsafe { CloseHandle(self.handle as _) }; }
+    fn drop(&mut self) {
+        log::trace!("Dropping the named pipe");
+        unsafe { CloseHandle(self.handle as _) };
+    }
 }

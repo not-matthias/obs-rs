@@ -54,7 +54,7 @@ pub struct HookInfo {
     pub flip: bool,
 
     /* additional options */
-    pub frame_interval: u32,
+    pub frame_interval: u64,
     #[doc(hidden)]
     pub unused_use_scale: bool,
     pub force_shmem: bool,
@@ -65,4 +65,17 @@ pub struct HookInfo {
 
     #[doc(hidden)]
     reserved: [u32; 128],
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sizes() {
+        assert_eq!(core::mem::size_of::<SharedTextureData>(), 4);
+        assert_eq!(core::mem::size_of::<CaptureType>(), 4);
+
+        assert_eq!(core::mem::size_of::<HookInfo>(), 648);
+    }
 }

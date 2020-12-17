@@ -8,6 +8,7 @@ pub enum ObsError {
     LoadGraphicOffsets(GraphicOffsetsError),
     CreatePipe,
     CreateMutex,
+    CreateEvent,
     CreateFileMapping,
     CreateDevice,
     OpenSharedResource,
