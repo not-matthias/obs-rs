@@ -106,18 +106,24 @@ impl Capture {
     fn init_hook_info(&mut self) -> Result<(), ObsError> {
         log::info!("Initializing the hook information");
 
-        let mut file_mapping = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
-            .ok_or(ObsError::CreateFileMapping)?;
+        if self.context.hook_info.is_none() {
+            let file_mapping = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
+                .ok_or(ObsError::CreateFileMapping)?;
+            self.context.hook_info = Some(file_mapping);
+        }
 
-        let hook_info = file_mapping.deref_mut();
+        // Hook info can never be `None`. We initialize it before that and return if it
+        // failed.
+        //
+        assert!(self.context.hook_info.is_some());
+
+        let hook_info = self.context.hook_info.as_mut().unwrap().deref_mut();
 
         let graphic_offsets = graphic_offsets::load_graphic_offsets().map_err(|e| ObsError::LoadGraphicOffsets(e))?;
         unsafe { (**hook_info).graphics_offsets = graphic_offsets };
         unsafe { (**hook_info).capture_overlay = self.config.capture_overlays };
         unsafe { (**hook_info).force_shmem = false };
         unsafe { (**hook_info).unused_use_scale = false };
-
-        self.context.hook_info = Some(file_mapping);
 
         Ok(())
     }
@@ -153,6 +159,8 @@ impl Capture {
 
         assert!(self.context.hook_info.is_some());
 
+        // Extract the handle
+        //
         let texture_data = FileMapping::<SharedTextureData>::open(format!(
             "{}_{}_{}",
             SHMEM_TEXTURE,
