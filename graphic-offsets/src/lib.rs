@@ -8,6 +8,7 @@ pub enum GraphicOffsetsError {
     ParseOutput(toml::de::Error),
 }
 
+#[repr(C)]
 #[derive(Deserialize)]
 pub struct GraphicOffsets {
     pub d3d8: D3D8,
@@ -15,11 +16,13 @@ pub struct GraphicOffsets {
     pub dxgi: DXGI,
 }
 
+#[repr(C)]
 #[derive(Deserialize)]
 pub struct D3D8 {
     pub present: u64,
 }
 
+#[repr(C)]
 #[derive(Deserialize)]
 pub struct D3D9 {
     pub present: u64,
@@ -29,6 +32,7 @@ pub struct D3D9 {
     pub is_d3d9ex_clsoff: u64,
 }
 
+#[repr(C)]
 #[derive(Deserialize)]
 pub struct DXGI {
     pub present: u64,
