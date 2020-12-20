@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, path::Path, process::Command};
+use std::{convert::TryFrom, os::windows::process::CommandExt, path::Path, process::Command};
 
 #[derive(Debug)]
 pub enum InjectHelperError {
@@ -46,12 +46,16 @@ pub fn inject_graphics_hook(pid: u32, anti_cheat_compatible: bool) -> Result<(),
 
     // Run the injector
     //
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    // const DETACHED_PROCESS: u32 = 0x00000008;
+
     let exit_status = Command::new("inject-helper.exe")
         .args(&[
             "graphics-hook64.dll",
             (anti_cheat_compatible as u8).to_string().as_str(),
             pid.to_string().as_str(),
         ])
+        .creation_flags(CREATE_NO_WINDOW)
         .status()
         .map_err(|e| InjectHelperError::ExecuteBinary(e))?;
 

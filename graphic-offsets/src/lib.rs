@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::{path::Path, process::Command};
+use std::{os::windows::process::CommandExt, path::Path, process::Command};
 
 #[derive(Debug)]
 pub enum GraphicOffsetsError {
@@ -81,7 +81,11 @@ pub fn load_graphic_offsets() -> Result<GraphicOffsets, GraphicOffsetsError> {
 
     // Execute the binary
     //
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    // const DETACHED_PROCESS: u32 = 0x00000008;
+
     let output = Command::new("./get-graphic-offsets.exe")
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| GraphicOffsetsError::ExecuteBinary(e))?;
 
