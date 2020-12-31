@@ -108,7 +108,7 @@ impl NamedPipe {
 
         // Create the read thread
         //
-        log::error!("Creating the thread");
+        log::info!("Creating the thread");
         let thread_handle = std::thread::spawn(move || {
             // Initialize the overlap struct
             //

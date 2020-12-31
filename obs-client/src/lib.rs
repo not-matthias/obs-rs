@@ -186,7 +186,7 @@ impl Capture {
                 "Trying to inject the graphics hook into the thread {}.",
                 self.context.thread_id
             );
-            inject_helper::inject_graphics_hook(self.context.thread_id, true).map_err(|e| ObsError::Inject(e))?;
+            inject_helper::inject_graphics_hook(self.context.thread_id, true).map_err(ObsError::Inject)?;
         }
 
         self.init_hook_info()?;
@@ -202,7 +202,7 @@ impl Capture {
         // Extract the handle
         //
         let hook_info = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
-            .ok_or(ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
+            .ok_or_else(|| ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
 
         let texture_data = FileMapping::<SharedTextureData>::open(format!(
             "{}_{}_{}",
@@ -210,7 +210,7 @@ impl Capture {
             unsafe { (**hook_info).window },
             unsafe { (**hook_info).map_id }
         ))
-        .ok_or(ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
+        .ok_or_else(|| ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
 
         let texture_handle = unsafe { (**texture_data).tex_handle };
         self.context.texture_handle = texture_handle;
@@ -261,7 +261,7 @@ impl Capture {
         let readable_texture = unsafe {
             let mut readable_texture = ptr::null_mut();
             let hr = self.context.device.as_ref().unwrap().CreateTexture2D(
-                &mut texture_desc,
+                &texture_desc,
                 ptr::null(),
                 &mut readable_texture,
             );
