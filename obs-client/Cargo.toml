@@ -10,7 +10,7 @@ edition = "2018"
 graphic-offsets = { path = "../graphic-offsets" }
 inject-helper = { path = "../inject-helper" }
 
-winapi = { version = "0.3.9", features = ["winuser", "windef", "synchapi", "winnt", "winbase", "memoryapi", "errhandlingapi", "d3d11", "d3dcommon", "winerror", "dxgi"] }
+winapi = { version = "0.3.9", features = ["winuser", "windef", "synchapi", "winnt", "winbase", "memoryapi", "errhandlingapi", "d3d11", "d3dcommon", "winerror", "dxgi", "securitybaseapi", "minwinbase", "namedpipeapi", "ioapiset"] }
 simple_logger = "1.11.0"
 log = "0.4.11"
 wio = "0.2.2"

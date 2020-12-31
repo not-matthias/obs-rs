@@ -9,7 +9,7 @@ pub enum ObsError {
     CreatePipe,
     CreateMutex,
     CreateEvent,
-    CreateFileMapping,
+    CreateFileMapping(u32),
     CreateDevice,
     OpenSharedResource,
     CreateTexture,

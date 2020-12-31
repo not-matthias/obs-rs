@@ -1,8 +1,11 @@
+#![feature(bool_to_option)]
+#![feature(cstring_from_vec_with_nul)]
+
 use crate::{
     error::ObsError,
     hook_info::{
-        HookInfo, SharedTextureData, EVENT_CAPTURE_RESTART, EVENT_HOOK_INIT, PIPE_NAME, SHMEM_HOOK_INFO, SHMEM_TEXTURE,
-        WINDOW_HOOK_KEEPALIVE,
+        HookInfo, SharedTextureData, EVENT_CAPTURE_RESTART, EVENT_CAPTURE_STOP, EVENT_HOOK_EXIT, EVENT_HOOK_INIT,
+        EVENT_HOOK_READY, PIPE_NAME, SHMEM_HOOK_INFO, SHMEM_TEXTURE, WINDOW_HOOK_KEEPALIVE,
     },
     utils::{color::BGRA8, d3d11, event::Event, file_mapping::FileMapping, mutex::Mutex, pipe::NamedPipe},
 };
@@ -12,8 +15,12 @@ use winapi::{
         dxgi::{IDXGISurface1, DXGI_MAPPED_RECT, DXGI_MAP_READ, DXGI_RESOURCE_PRIORITY_MAXIMUM},
         winerror::FAILED,
     },
-    um::d3d11::{
-        ID3D11Device, ID3D11DeviceContext, ID3D11Resource, ID3D11Texture2D, D3D11_CPU_ACCESS_READ, D3D11_USAGE_STAGING,
+    um::{
+        d3d11::{
+            ID3D11Device, ID3D11DeviceContext, ID3D11Resource, ID3D11Texture2D, D3D11_CPU_ACCESS_READ,
+            D3D11_USAGE_STAGING,
+        },
+        errhandlingapi::GetLastError,
     },
 };
 use wio::com::ComPtr;
@@ -40,6 +47,12 @@ pub struct Context {
 
     keepalive_mutex: Option<Mutex>,
     pipe: Option<NamedPipe>,
+
+    hook_restart: Option<Event>,
+    hook_stop: Option<Event>,
+    hook_init: Option<Event>,
+    hook_ready: Option<Event>,
+    hook_exit: Option<Event>,
 
     device: Option<ComPtr<ID3D11Device>>,
     device_context: Option<ComPtr<ID3D11DeviceContext>>,
@@ -111,13 +124,40 @@ impl Capture {
         log::info!("Initializing the hook information");
 
         let mut hook_info = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
-            .ok_or(ObsError::CreateFileMapping)?;
+            .ok_or(ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
 
         let graphic_offsets = graphic_offsets::load_graphic_offsets().map_err(|e| ObsError::LoadGraphicOffsets(e))?;
         unsafe { (**hook_info).graphics_offsets = graphic_offsets };
         unsafe { (**hook_info).capture_overlay = self.config.capture_overlays };
         unsafe { (**hook_info).force_shmem = false };
         unsafe { (**hook_info).unused_use_scale = false };
+
+        log::info!("Hook info: {:?}", unsafe { &**hook_info });
+
+        Ok(())
+    }
+
+    fn init_events(&mut self) -> Result<(), ObsError> {
+        macro_rules! open_event {
+            ($var_name:tt, $event_name:expr) => {
+                // if self.context.$var_name.is_none() {
+                if let Some(event) = Event::open(format!("{}{}", $event_name, self.context.pid)) {
+                    self.context.$var_name = Some(event)
+                } else {
+                    log::warn!("Couldn't find {:?} ({:?}).", $event_name, unsafe {
+                        GetLastError()
+                    });
+                    return Err(ObsError::CreateEvent);
+                }
+                // }
+            };
+        }
+
+        open_event!(hook_restart, EVENT_CAPTURE_RESTART);
+        open_event!(hook_stop, EVENT_CAPTURE_STOP);
+        open_event!(hook_init, EVENT_HOOK_INIT);
+        open_event!(hook_ready, EVENT_HOOK_READY);
+        open_event!(hook_exit, EVENT_HOOK_EXIT);
 
         Ok(())
     }
@@ -150,6 +190,7 @@ impl Capture {
         }
 
         self.init_hook_info()?;
+        self.init_events()?;
 
         // Create and signal the hook init event
         //
@@ -161,7 +202,7 @@ impl Capture {
         // Extract the handle
         //
         let hook_info = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
-            .ok_or(ObsError::CreateFileMapping)?;
+            .ok_or(ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
 
         let texture_data = FileMapping::<SharedTextureData>::open(format!(
             "{}_{}_{}",
@@ -169,7 +210,7 @@ impl Capture {
             unsafe { (**hook_info).window },
             unsafe { (**hook_info).map_id }
         ))
-        .ok_or(ObsError::CreateFileMapping)?;
+        .ok_or(ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
 
         let texture_handle = unsafe { (**texture_data).tex_handle };
         self.context.texture_handle = texture_handle;
@@ -216,7 +257,7 @@ impl Capture {
         texture_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         texture_desc.MiscFlags = 0;
 
-        log::info!("Creating a 2d texture");
+        log::trace!("Creating a 2d texture");
         let readable_texture = unsafe {
             let mut readable_texture = ptr::null_mut();
             let hr = self.context.device.as_ref().unwrap().CreateTexture2D(
@@ -236,7 +277,7 @@ impl Capture {
         unsafe { readable_texture.SetEvictionPriority(DXGI_RESOURCE_PRIORITY_MAXIMUM) };
         let readable_surface = readable_texture.up::<ID3D11Resource>();
 
-        log::info!("Copying the resources");
+        log::trace!("Copying the resources");
         unsafe {
             self.context
                 .device_context
@@ -245,11 +286,11 @@ impl Capture {
                 .CopyResource(readable_surface.as_raw(), frame_texture.up::<ID3D11Resource>().as_raw());
         }
         let frame_surface: ComPtr<IDXGISurface1> = readable_surface.cast().unwrap();
-        log::info!("Texture Size: {} x {}", texture_desc.Width, texture_desc.Height);
+        log::trace!("Texture Size: {} x {}", texture_desc.Width, texture_desc.Height);
 
         // Resource to Surface (https://github.com/bryal/dxgcap-rs/blob/master/src/lib.rs#L229)
         //
-        log::info!("Mapping the surface");
+        log::trace!("Mapping the surface");
         let mapped_surface = unsafe {
             let mut mapped_surface = mem::zeroed();
             let result = frame_surface.Map(&mut mapped_surface, DXGI_MAP_READ);
@@ -281,6 +322,21 @@ impl Capture {
     /// - Frame
     /// - Width and Height
     pub fn capture_frame<T>(&mut self) -> Result<(&mut [T], (usize, usize)), ObsError> {
+        // Restart the capture if the game has been rehooked
+        //
+        if self
+            .context
+            .hook_restart
+            .as_ref()
+            .map(|e| e.signalled().is_some())
+            .unwrap_or(true)
+        {
+            log::info!("The restart event has been signalled. Restarting the capture.");
+            self.try_launch()?;
+        }
+
+        // Copy the texture
+        //
         let (mapped_surface, (width, height)) = self.map_resource()?;
 
         let byte_size = |x| x * mem::size_of::<BGRA8>() / mem::size_of::<T>();
