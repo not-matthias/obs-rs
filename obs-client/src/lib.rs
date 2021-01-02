@@ -331,7 +331,7 @@ impl Capture {
             .map(|e| e.signalled().is_some())
             .unwrap_or(true)
         {
-            log::info!("The restart event has been signalled. Restarting the capture.");
+            log::warn!("The restart event has been signalled. Restarting the capture.");
             self.try_launch()?;
         }
 
