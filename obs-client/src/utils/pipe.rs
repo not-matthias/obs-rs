@@ -90,7 +90,7 @@ impl NamedPipe {
         overlap.hEvent = event_handle as _;
 
         let result = unsafe { ConnectNamedPipe(pipe_handle as _, &mut overlap as _) };
-        if result != 0 || (result == 0 && Self::io_pending()) {
+        if result != 0 || Self::io_pending() {
             Some(overlap)
         } else {
             None

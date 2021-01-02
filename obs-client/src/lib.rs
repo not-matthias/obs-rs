@@ -124,9 +124,9 @@ impl Capture {
         log::info!("Initializing the hook information");
 
         let mut hook_info = FileMapping::<HookInfo>::open(format!("{}{}", SHMEM_HOOK_INFO, self.context.pid))
-            .ok_or(ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
+            .ok_or_else(|| ObsError::CreateFileMapping(unsafe { GetLastError() as u32 }))?;
 
-        let graphic_offsets = graphic_offsets::load_graphic_offsets().map_err(|e| ObsError::LoadGraphicOffsets(e))?;
+        let graphic_offsets = graphic_offsets::load_graphic_offsets().map_err(ObsError::LoadGraphicOffsets)?;
         unsafe { (**hook_info).graphics_offsets = graphic_offsets };
         unsafe { (**hook_info).capture_overlay = self.config.capture_overlays };
         unsafe { (**hook_info).force_shmem = false };

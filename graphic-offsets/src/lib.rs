@@ -76,7 +76,7 @@ pub fn load_graphic_offsets() -> Result<GraphicOffsets, GraphicOffsetsError> {
             "get-graphic-offsets.exe",
             include_bytes!("../bin/get-graphics-offsets64.exe"),
         )
-        .map_err(|e| GraphicOffsetsError::WriteBinaryToFile(e))?;
+        .map_err(GraphicOffsetsError::WriteBinaryToFile)?;
     }
 
     // Execute the binary
@@ -87,14 +87,14 @@ pub fn load_graphic_offsets() -> Result<GraphicOffsets, GraphicOffsetsError> {
     let output = Command::new("./get-graphic-offsets.exe")
         .creation_flags(CREATE_NO_WINDOW)
         .output()
-        .map_err(|e| GraphicOffsetsError::ExecuteBinary(e))?;
+        .map_err(GraphicOffsetsError::ExecuteBinary)?;
 
     // Parse the output. We need to do this with a separate structure, because the
     // sizes need to match. Wrapping the `ddraw` with an Option, will add 4 more
     // bytes that we don't need.
     //
     let parsed = toml::from_str::<ParsedGraphicOffsets>(&*String::from_utf8_lossy(&*output.stdout))
-        .map_err(|e| GraphicOffsetsError::ParseOutput(e))?;
+        .map_err(GraphicOffsetsError::ParseOutput)?;
 
     Ok(GraphicOffsets {
         d3d8: parsed.d3d8,

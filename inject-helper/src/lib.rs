@@ -36,12 +36,12 @@ pub fn inject_graphics_hook(pid: u32, anti_cheat_compatible: bool) -> Result<(),
     //
     if !Path::new("inject-helper.exe").exists() {
         std::fs::write("inject-helper.exe", include_bytes!("../bin/inject-helper64.exe"))
-            .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
+            .map_err(InjectHelperError::WriteBinaryToFile)?;
     }
 
     if !Path::new("graphics-hook64.dll").exists() {
         std::fs::write("graphics-hook64.dll", include_bytes!("../bin/graphics-hook64.dll"))
-            .map_err(|e| InjectHelperError::WriteBinaryToFile(e))?;
+            .map_err(InjectHelperError::WriteBinaryToFile)?;
     }
 
     // Run the injector
@@ -57,7 +57,7 @@ pub fn inject_graphics_hook(pid: u32, anti_cheat_compatible: bool) -> Result<(),
         ])
         .creation_flags(CREATE_NO_WINDOW)
         .status()
-        .map_err(|e| InjectHelperError::ExecuteBinary(e))?;
+        .map_err(InjectHelperError::ExecuteBinary)?;
 
     if exit_status.success() {
         Ok(())
