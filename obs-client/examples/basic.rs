@@ -12,8 +12,9 @@ fn main() {
         return;
     }
 
+    let mut fps = fps_counter::FPSCounter::new();
     loop {
-        let _ = capture.capture_frame::<u8>();
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        let (_buffer, (_width, _height)) = capture.capture_frame::<u8>().unwrap();
+        println!("{:?}", fps.tick());
     }
 }
