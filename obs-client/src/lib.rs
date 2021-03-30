@@ -38,6 +38,7 @@ pub struct CaptureConfig {
 }
 
 /// Everything needed to run the game capture.
+#[allow(dead_code)]
 #[derive(Default)]
 pub struct Context {
     hwnd: usize,

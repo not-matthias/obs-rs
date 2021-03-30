@@ -42,6 +42,7 @@ pub struct D3D9 {
     pub is_d3d9ex_clsoff: u32,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[repr(C)]
 #[derive(Deserialize, Default, Debug)]
 pub struct DXGI {

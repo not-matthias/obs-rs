@@ -75,8 +75,6 @@ impl NamedPipe {
             )
         };
 
-        std::mem::drop(sd);
-
         if handle != INVALID_HANDLE_VALUE {
             log::trace!("Created the named pipe {:?} = 0x{:x}", name.as_ref(), handle as usize);
             Some(handle as usize)
