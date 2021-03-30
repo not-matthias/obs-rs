@@ -14,7 +14,7 @@ fn main() {
 
     let mut fps = fps_counter::FPSCounter::new();
     loop {
-        let (_buffer, (_width, _height)) = capture.capture_frame::<u8>().unwrap();
-        println!("{:?}", fps.tick());
+        let (buffer, (width, height)) = capture.capture_frame::<u8>().unwrap();
+        println!("{:?} | {:?}x{:?} | {:?}", fps.tick(), width, height, buffer.len());
     }
 }
