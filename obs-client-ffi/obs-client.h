@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-struct Capture;
+typedef void *Capture;
 
 typedef struct Frame {
     uintptr_t width;

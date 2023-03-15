@@ -5,7 +5,7 @@ tab_width = 4
 style = "both"
 cpp_compat = true
 
-after_includes = "struct Capture;"
+after_includes = "typedef void *Capture;"
 
 [fn]
 sort_by = "None"

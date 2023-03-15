@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <ostream>
 #include <new>
-struct Capture;
+typedef void *Capture;
 
 struct Frame {
     uintptr_t width;
