@@ -1,0 +1,13 @@
+[package]
+name = "obs-client-ffi"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "obs_client_ffi"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[dependencies]
+obs-client = { path = "../obs-client" }
