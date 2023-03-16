@@ -3,4 +3,5 @@ members = [
 	"graphic-offsets",
 	"inject-helper",
     "obs-client",
+    "obs-client-ffi",
 ]

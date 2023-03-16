@@ -1,6 +1,3 @@
-#![feature(bool_to_option)]
-#![feature(cstring_from_vec_with_nul)]
-
 use crate::{
     error::ObsError,
     hook_info::{

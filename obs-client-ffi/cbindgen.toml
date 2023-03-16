@@ -1,0 +1,14 @@
+language = "C++"
+
+include_guard = "OBS_CLIENT_H"
+tab_width = 4
+style = "both"
+cpp_compat = true
+
+after_includes = "typedef void *Capture;"
+
+[fn]
+sort_by = "None"
+
+[enum]
+prefix_with_name = true
